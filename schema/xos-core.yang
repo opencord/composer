@@ -1,7 +1,11 @@
 module xos-core {
-  namespace "urn:onlab:xos:core";
+  namespace "urn:onlab:xtype:core";
   prefix xos;
   yang-version 1.1;
+
+  import ietf-yang-types { prefix yang; }
+  import ietf-inet-types { prefix inet; }
+  import xos-types       { prefix xtype; }
 
   organization
    "Open Networking Lab (XOS) / Corenova Technologies";
@@ -26,10 +30,6 @@ module xos-core {
     description "Initial revision.";
   }
   
-  import ietf-yang-types { prefix yang; }
-  import ietf-inet-types { prefix inet; }
-  import xos-types { prefix xos; }
-
   feature synchronizer {
     description
       "Enables configuration synchronization to the distributed store.";
@@ -38,24 +38,6 @@ module xos-core {
   identity kind;
   identity generic { base kind; }
   identity service { base kind; }
-
-  typedef unique-identifier {
-    description "defines valid formats for external reference id";
-    type union {
-      type uint32 { range 1..max; }
-      type yang:uuid;
-      type inet:uri;
-    }
-  }
-  typedef bandwidth {
-    type uint32 {
-      range 1000000..max; // should be at least 1 Mbps?  
-    }
-    units 'bps';
-  }
-  typedef vlan {
-    type uint16 { range 0..4095; }
-  }
 
   grouping attribute-pair {
     leaf name  { type string { length 0..128; } }
@@ -112,7 +94,7 @@ module xos-core {
   
   grouping base-common {
     leaf id {
-      type unique-identifier;
+      type xtype:unique-identifier;
       mandatory true;
     }
     leaf name {
@@ -128,7 +110,7 @@ module xos-core {
       description "backwards-compatible attribute association";
     }
     leaf service-specific-id {
-      type unique-identifier;
+      type xtype:unique-identifier;
       mandatory true;
       status deprecated;
     }
@@ -137,7 +119,6 @@ module xos-core {
       uses sync-record;
     }
   }
-
   grouping tenant-root {
     uses base-common {
       refine 'name' {
@@ -153,21 +134,18 @@ module xos-core {
       // not exactly clear how this is populated
     }
   }
-  
   grouping subscriber {
     uses tenant-root {
       refine kind { default subscriber; }
     }
     // seems we should have interesting attributes specific to subscriber?
   }
-  
   grouping provider {
     uses tenant-root {
       refine kind { default provider; }
     }
     // seems we should have interesting attributes specific to provider?
   }
-
   grouping service {
     uses base-common {
       refine 'name' {
@@ -210,16 +188,19 @@ module xos-core {
         "Each entry represents a provider of the service. Each unique service
          should augment this block with service specific attributes.";
       key id;
-      uses xos:provider;
+      uses xtype:provider;
     }
     list subscriber {
       description
         "Each entry represents a subscriber of the service. Each unique service
          should augment this block with service specific attributes.";
       key id;
-      uses xos:subscriber;
+      uses xtype:subscriber;
       notification subscriber-added;
       notification subscriber-deleted;
+    }
+    list slice {
+      uses xtype:slice;
     }
     
     // TOOD: need to better understand relationship between Service and Slice
@@ -282,7 +263,7 @@ module xos-core {
 
     leaf slice-url {
        description "A URL describing the purpose of this slice";
-       type xos.refs.url-field; 
+       type xtype:url-field; 
        // blank true;
     }
 
@@ -293,7 +274,7 @@ module xos-core {
 
     leaf service {
        description "The service that runs in this slice";
-       type xos.refs.service;
+       type xtype:service;
     }
 
     leaf network {
@@ -307,55 +288,58 @@ module xos-core {
     }
 
     leaf service-class {
-       type xos.refs.service-class;
-       status deprecated;
+      type xtype:service-class;
+      status deprecated;
     }
    
     leaf creator {
-       type xos.refs.user;
+      type xtype:user;
     }
 
     leaf default-flavor {
-       type xos.refs.flavor;
+      type xtype:flavor;
     }
 
     leaf default-image {
-       type xos.refs.image;
+      type xtype:image;
     }
 
     leaf default-node {
-       type xos.refs.node;
+      type xtype:node;
     } 
 
     leaf mount-data-sets {
-       type string;
-       default "GenBank";
-       length 0..256;
+      type string {
+        length 0..256; 
+      }
+      default "GenBank";
     } 
 
     leaf default_isolation {
-       type string;
-       default "vm";
-       length 0..30;
+      type string {
+        length 0..30;
+      }
+      default "vm";
     } 
 
     leaf-list tags {
-        type leafref {
-            path "/tag[id = current()/../id]/id";
-        }
+      // below leafref is not valid since there is no /tag
+      type leafref {
+        path "/tag[id = current()/../id]/id";
+      }
     }
   }
-
-
+  
+  
   grouping controller-images {
     uses xos-base;
 
     leaf image { 
-      type xos:image; 
+      type xtype:image; 
     }
 
     leaf controller { 
-      type xos:controller; 
+      type xtype:controller; 
     }
 
     container synchronizer {
@@ -371,11 +355,11 @@ module xos-core {
     uses xos-base;
 
     leaf controller { 
-      type xos:controller; 
+      type xtype:controller; 
     }
 
     leaf site-privilege { 
-      type xos:site-privilege; 
+      type xtype:site-privilege; 
     }
     
    container synchronizer {
@@ -411,10 +395,10 @@ module xos-core {
   grouping controller-network {
     uses xos-base;
     leaf network { 
-      type xos:network; 
+      type xtype:network; 
     }
     leaf controller { 
-      type xos:controller; 
+      type xtype:controller; 
     }
     
     container synchronizer {
@@ -440,7 +424,7 @@ module xos-core {
     uses xos-base;
     
     leaf site-url { 
-      type xos:url-field;
+      type xtype:url-field;
     }
     leaf enabled { 
       type boolean;
@@ -452,7 +436,7 @@ module xos-core {
       type boolean;
     }
     leaf location { 
-      type xos:geoposition-field;
+      type xtype:geoposition-field;
     }
     leaf longitude { 
       type decimal64;
@@ -479,14 +463,15 @@ module xos-core {
   }
 
   grouping site-deployment {
+    uses xos-base;
     leaf site { 
-      type xos:site; 
+      type xtype:site; 
     }
     leaf deployment { 
-      type xos:deployment; 
+      type xtype:deployment; 
     }
     leaf controller { 
-      type xos:controller; 
+      type xtype:controller; 
     }
     container synchronizer {
         if-feature synchronizer {
@@ -500,8 +485,9 @@ module xos-core {
 
   
   grouping user-credential {
+    uses xos-base;
     leaf user { 
-      type xos:user; 
+      type xtype:user; 
     }
     
     leaf key-id { 
@@ -509,32 +495,35 @@ module xos-core {
     }
 
     leaf enc-value { 
-      type xos:encrypted-string;
+      type xtype:encrypted-string;
     }
   }
 
   grouping invoice {
+    uses xos-base;
     leaf date { 
-      type xos:datetime;
+      type xtype:datetime;
     }
     leaf account { 
-      type xos:account; 
+      type xtype:account; 
     }
   }
 
   grouping slice-privilege {
+    uses xos-base;
     leaf user { 
-      type xos:user; 
+      type xtype:user; 
     }
     leaf slice { 
-      type xos:slice; 
+      type xtype:slice; 
     }
     leaf role { 
-      type xos:role; 
+      type xtype:role; 
     }
   }
 
   grouping flavor {
+    uses xos-base;
     
     leaf description { 
       type string;
@@ -551,11 +540,12 @@ module xos-core {
   }
 
   grouping port {
+    uses xos-base;
     leaf network { 
-      type xos:network; 
+      type xtype:network; 
     }
     leaf instance { 
-      type xos:instance; 
+      type xtype:instance; 
     }
     container synchronizer {
         if-feature synchronizer {
@@ -576,18 +566,20 @@ module xos-core {
   }
 
   grouping service-role {
+    uses xos-base;
     leaf role { 
       type string;
     }
   }
 
   grouping controller-site {
+    uses xos-base;
     leaf site { 
-      type xos:site; 
+      type xtype:site; 
     }
 
     leaf controller { 
-      type xos:controller; 
+      type xtype:controller; 
     }
 
     container synchronizer {
@@ -601,11 +593,12 @@ module xos-core {
   }
 
   grouping controller-slice {
+    uses xos-base;
     leaf controller { 
-      type xos:controller; 
+      type xtype:controller; 
     }
     leaf slice { 
-      type xos:slice; 
+      type xtype:slice; 
     }
     
     container synchronizer {
@@ -618,14 +611,16 @@ module xos-core {
   }
 
   grouping tenant-role {
+    uses xos-base;
     leaf role { 
       type string;
     }
   }
 
   grouping network {
+    uses xos-base;
     leaf template { 
-      type xos:template; 
+      type xtype:template; 
     }
 
     leaf subnet { 
@@ -641,7 +636,7 @@ module xos-core {
     }
 
     leaf owner { 
-      type xos:owner; 
+      type xtype:owner; 
     }
 
     leaf guaranteed-bandwidth { 
@@ -683,16 +678,19 @@ module xos-core {
   }
 
   grouping controller-role {
+    uses xos-base;
     leaf role { 
       type string;
     }
   }
 
   grouping diag {
+    uses xos-base;
     
   }
 
   grouping service-class {
+    uses xos-base;
     
     leaf description { 
       type string;
@@ -712,12 +710,14 @@ module xos-core {
   }
 
   grouping site-role {
+    uses xos-base;
     leaf role { 
       type string;
     }
   }
 
   grouping instance {
+    uses xos-base;
     container synchronizer {
       if-feature synchronizer {
         leaf instance-id { 
@@ -737,25 +737,25 @@ module xos-core {
         }
     }
     leaf image { 
-      type xos:image; 
+      type xtype:image; 
     }
     leaf creator { 
-      type xos:creator; 
+      type xtype:creator; 
     }
     leaf slice { 
-      type xos:slice; 
+      type xtype:slice; 
     }
     leaf deployment { 
-      type xos:deployment; 
+      type xtype:deployment; 
     }
     leaf node { 
-      type xos:node; 
+      type xtype:node; 
     }
     leaf number-cores { 
       type uint32;
     }
     leaf flavor { 
-      type xos:flavor; 
+      type xtype:flavor; 
     }
     leaf user-data { 
       type string;
@@ -767,16 +767,17 @@ module xos-core {
       type string;
     }
     leaf parent { 
-      type xos:parent; 
+      type xtype:parent; 
     }
   }
 
   grouping charge {
+    uses xos-base;
     leaf account { 
-      type xos:account; 
+      type xtype:account; 
     }
     leaf slice { 
-      type xos:slice; 
+      type xtype:slice; 
     }
     leaf kind { 
       type string;
@@ -785,10 +786,10 @@ module xos-core {
       type string;
     }
     leaf date { 
-      type xos:datetime;
+      type xtype:datetime;
     }
     leaf object { 
-      type xos:object; 
+      type xtype:object; 
     }
     leaf amount { 
       type decimal64;
@@ -797,11 +798,12 @@ module xos-core {
       type decimal64;
     }
     leaf invoice { 
-      type xos:invoice; 
+      type xtype:invoice; 
     }
   }
 
   grouping program {
+    uses xos-base;
     leaf description { 
       type string;
     }
@@ -815,7 +817,7 @@ module xos-core {
     }
 
     leaf owner { 
-      type xos:owner; 
+      type xtype:owner; 
     }
 
     leaf contents { 
@@ -836,6 +838,7 @@ module xos-core {
   }
 
   grouping role {
+    uses xos-base;
     leaf role-type { 
       type string;
     }
@@ -846,43 +849,44 @@ module xos-core {
       type string;
     }
     leaf content-type { 
-      type xos:content-type; 
+      type xtype:content-type; 
     }
   }
 
   grouping usable-object {
-    
+    uses xos-base;
   }
 
   grouping node-label {
-    
+    uses xos-base;
   }
 
   grouping slice-credential {
+    uses xos-base;
     leaf slice { 
-      type xos:slice; 
+      type xtype:slice; 
     }
     
     leaf key-id { 
       type string;
     }
     leaf enc-value { 
-      type xos:encrypted-string;
+      type xtype:encrypted-string;
     }
   }
 
   grouping node {
-    
+    uses xos-base;
     leaf site-deployment { 
-      type xos:site-deployment; 
+      type xtype:site-deployment; 
     }
     leaf site { 
-      type xos:site; 
+      type xtype:site; 
     }
   }
 
   grouping address-pool {
-    
+    uses xos-base;
     leaf addresses { 
       type string;
     }
@@ -899,12 +903,12 @@ module xos-core {
       type string;
     }
     leaf service { 
-      type xos:service; 
+      type xtype:service; 
     }
   }
 
   grouping dashboard-view {
-    
+    uses xos-base;
     leaf url { 
       type string;
     }
@@ -912,36 +916,41 @@ module xos-core {
       type boolean;
     }
   }
+
   grouping network-parameter {
+    uses xos-base;
     leaf parameter { 
-      type xos:parameter; 
+      type xtype:parameter; 
     }
     leaf value { 
       type string;
     }
     leaf content-type { 
-      type xos:content-type; 
+      type xtype:content-type; 
     }
     leaf object-id { 
       type uint32;
     }
   }
+
   grouping image-deployments {
+    uses xos-base;
     leaf image { 
-      type xos:image; 
+      type xtype:image; 
     }
     leaf deployment { 
-      type xos:deployment; 
+      type xtype:deployment; 
     }
   }
 
   grouping controller-user {
+    uses xos-base;
     leaf user { 
-      type xos:user; 
+      type xtype:user; 
     }
 
     leaf controller { 
-      type xos:controller; 
+      type xtype:controller; 
     }
     
     container synchronizer {
@@ -952,22 +961,25 @@ module xos-core {
         }
       }
   }
+
   grouping reserved-resource {
+    uses xos-base;
     leaf instance { 
-      type xos:instance; 
+      type xtype:instance; 
     }
     leaf resource { 
-      type xos:resource; 
+      type xtype:resource; 
     }
     leaf quantity { 
       type uint32;
     }
     leaf reservationSet { 
-      type xos:reservationSet; 
+      type xtype:reservationSet; 
     }
   }
+
   grouping network-template {
-    
+    uses xos-base;
     leaf description { 
       type string;
     }
@@ -996,12 +1008,14 @@ module xos-core {
       type string;
     }
   }
+
   grouping controller-dashboard-view {
+    uses xos-base;
     leaf controller { 
-      type xos:controller; 
+      type xtype:controller; 
     }
     leaf dashboardView { 
-      type xos:dashboardView; 
+      type xtype:dashboardView; 
     }
     leaf enabled { 
       type boolean;
@@ -1010,19 +1024,22 @@ module xos-core {
       type string;
     }
   }
+
   grouping user-dashboard-view {
+    uses xos-base;
     leaf user { 
-      type xos:user; 
+      type xtype:user; 
     }
     leaf dashboardView { 
-      type xos:dashboardView; 
+      type xtype:dashboardView; 
     }
     leaf order { 
       type uint32;
     }
   }
+
   grouping controller {
-    
+    uses xos-base;
     leaf backend-type { 
       type string;
     }
@@ -1054,15 +1071,17 @@ module xos-core {
       type string;
     }
     leaf deployment { 
-      type xos:deployment; 
+      type xtype:deployment; 
     }
   }
+
   grouping user {
+    uses xos-base;
     leaf password { 
       type string;
     }
     leaf last-login { 
-      type xos:datetime;
+      type xtype:datetime;
     }
     leaf email { 
       type EmailField;
@@ -1080,10 +1099,10 @@ module xos-core {
       type string;
     }
     leaf user-url { 
-      type xos:url-field;
+      type xtype:url-field;
     }
     leaf site { 
-      type xos:site; 
+      type xtype:site; 
     }
     leaf public-key { 
       type string;
@@ -1110,72 +1129,83 @@ module xos-core {
       type string;
     }
     leaf timezone { 
-      type xos:time-zone-field;
+      type xtype:time-zone-field;
     }
   }
+
   grouping deployment {
+    uses xos-base;
     
     leaf access-control { 
       type string;
     }
   }
+
   grouping reservation {
-    leaf startTime { 
-      type xos:datetime;
+    uses xos-base;
+    leaf start-time { 
+      type xtype:datetime;
     }
     leaf slice { 
-      type xos:slice; 
+      type xtype:slice; 
     }
     leaf duration { 
       type uint32;
     }
   }
+
   grouping site-privilege {
+    uses xos-base;
     leaf user { 
-      type xos:user; 
+      type xtype:user; 
     }
     leaf site { 
-      type xos:site; 
+      type xtype:site; 
     }
     leaf role { 
-      type xos:role; 
+      type xtype:role; 
     }
   }
+
   grouping payment {
+    uses xos-base;
     leaf account { 
-      type xos:account; 
+      type xtype:account; 
     }
     leaf amount { 
       type decimal64;
     }
     leaf date { 
-      type xos:datetime;
+      type xtype:datetime;
     }
   }
   
   grouping network-slice {
+    uses xos-base;
     leaf network { 
-      type xos:network; 
+      type xtype:network; 
     }
 
     leaf slice { 
-      type xos:slice; 
+      type xtype:slice; 
     }
   }
 
   grouping account {
+    uses xos-base;
     leaf site { 
-      type xos:site; 
+      type xtype:site; 
     }
   }
 
   grouping controller-slice-privilege {
+    uses xos-base;
     leaf controller { 
-      type xos:controller; 
+      type xtype:controller; 
     }
 
     leaf slice-privilege { 
-      type xos:slice-privilege; 
+      type xtype:slice-privilege; 
     }
     
     container synchronizer {
@@ -1188,8 +1218,9 @@ module xos-core {
   }
 
   grouping site-credential {
+    uses xos-base;
     leaf site { 
-      type xos:site; 
+      type xtype:site; 
     }
     
     leaf key-id { 
@@ -1197,43 +1228,47 @@ module xos-core {
     }
 
     leaf enc-value { 
-      type xos:encrypted-string;
+      type xtype:encrypted-string;
     }
   }
 
   grouping deployment-privilege {
+    uses xos-base;
     leaf user { 
-      type xos:user; 
+      type xtype:user; 
     }
 
     leaf deployment { 
-      type xos:deployment; 
+      type xtype:deployment; 
     }
 
     leaf role { 
-      type xos:role; 
+      type xtype:role; 
     }
   }
 
   grouping network-parameter-type {
+    uses xos-base;
     leaf description { 
       type string;
     }
   }
   
   grouping deployment-role {
+    uses xos-base;
     leaf role { 
       type string;
     }
   }
 
   grouping project {
-    
+    uses xos-base;
   }
   
   grouping slice-tag {
+    uses xos-base;
     leaf slice { 
-      type xos:slice; 
+      type xtype:slice; 
     }
     
     leaf value { 
@@ -1242,14 +1277,16 @@ module xos-core {
   }
 
   grouping router {
+    uses xos-base;
     leaf owner { 
-      type xos:owner; 
+      type xtype:owner; 
     }
   }
 
   grouping service-resource {
+    uses xos-base;
     leaf service-class { 
-      type xos:service-class; 
+      type xtype:service-class; 
     }
     
     leaf max-units-deployment { 
@@ -1282,17 +1319,18 @@ module xos-core {
   }
 
   grouping service-privilege {
+    uses xos-base;
     leaf user { 
-      type xos:user; 
+      type xtype:user; 
     }
     leaf service { 
-      type xos:service; 
+      type xtype:service; 
     }
     leaf role { 
-      type xos:role; 
+      type xtype:role; 
     }
   }
-  
+
   /*** main configuration tree for XOS ***/
 
   container api {
